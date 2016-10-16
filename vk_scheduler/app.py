@@ -73,8 +73,12 @@ class Scheduler(App):
             for attachment in post.attachments
             for key, vk_attachment in attachment.items()
         )
-        invalid_links = list()
+        obscure_links = list()
         for link in links:
+            if len(attachments_ids) >= 10:
+                logging.error('Too many attachments, next link would be ignored: {}'.format(link))
+                obscure_links.append(link)
+                continue
             vk_attachment = None
 
             if link in photos_links:
@@ -94,10 +98,10 @@ class Scheduler(App):
                 )
             else:
                 logging.error('Unknown link type: {}'.format(link))
-                invalid_links.append(link)
+                obscure_links.append(link)
 
         attachments = ','.join(attachments_ids)
-        message = post.text.replace(links_block, LINKS_SEP.join(invalid_links))
+        message = post.text.replace(links_block, LINKS_SEP.join(obscure_links))
         self.post_edited(post, message, attachments)
 
     @make_delayed(MINIMAL_INTERVAL_BETWEEN_POST_EDITING_REQUESTS_IN_SECONDS)
