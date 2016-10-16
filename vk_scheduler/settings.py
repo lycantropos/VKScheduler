@@ -1,6 +1,5 @@
 import configparser
 import os
-
 import re
 
 from vk_app.models.attachments import VKAttachment
@@ -31,8 +30,6 @@ LAST_CHECK_UTC_TIMESTAMP = int(schedule.get('last_check_utc_timestamp'))
 
 files = config['files']
 TMP_DRC_ABSPATH = files.get('tmp_drc_abspath')
-CAPTCHA_IMG_ABSPATH = os.path.join(TMP_DRC_ABSPATH, 'captcha.png')
-
 VIDEO_SERVICES = list(
     re.sub(r'^w{3}\.(?=.+$)', '', video_service.strip())
     for video_service in files.get('video_services').split(',')
@@ -42,6 +39,8 @@ logger = config['logger']
 LOGS_PATH = logger.get('logs_path')
 LOGGING_CONFIG_PATH = logger.get('logging_config_path')
 
+CAPTCHA_IMG_ABSPATH = os.path.join(TMP_DRC_ABSPATH, 'captcha.png')
+
 MINIMAL_INTERVAL_BETWEEN_DOWNLOAD_REQUESTS_IN_SECONDS = 0.35
 MINIMAL_INTERVAL_BETWEEN_POST_EDITING_REQUESTS_IN_SECONDS = 25
 
@@ -49,13 +48,15 @@ MORE_INFO_BLOCK_RE = r'(\n\nПодробности:.+)?$'
 LINKS_SEP = '\n'
 LINKS_BLOCK_RE = r'\n((https?:\/\/(.+?)(\/.*)){sep})*(https?:\/\/(.+?)(\/.*))'.format(sep=LINKS_SEP) + \
                  r'(?={})'.format(MORE_INFO_BLOCK_RE)
-VK_ID_RE = r'(-?\d+_\d+)'
-VK_OBJECT_LINK_RE_TEMPLATE = r'^https?:\/\/(?:www\.)?vk\.com\/.*(?:{vk_object_id_re}).*$'
+
 IMG_LINK_RE = r'^https?:\/\/(?:.+?)(?:\/.*\.jpg)$'
 EXTERNAL_VIDEO_LINK_RE = r'^https?:\/\/(?:' + '|'.join(
     '(?:(?:www\.)?{video_service})'.format(video_service=video_service.replace('.', '\.'))
     for video_service in VIDEO_SERVICES
 ) + ')(?:\/.*)$'
+
+VK_ID_RE = r'(-?\d+_\d+)'
+VK_OBJECT_LINK_RE_TEMPLATE = r'^https?:\/\/(?:www\.)?vk\.com\/.*(?:{vk_object_id_re}).*$'
 VK_OBJECTS_LINK_RES = dict(
     (cls, VK_OBJECT_LINK_RE_TEMPLATE.format(vk_object_id_re=cls.key() + VK_ID_RE))
     for cls in get_all_subclasses(VKAttachment)

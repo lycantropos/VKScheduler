@@ -1,4 +1,3 @@
-import configparser
 import logging
 import math
 import os
@@ -14,13 +13,12 @@ from vk_app.models.post import VKPost
 from vk_app.utils import make_delayed
 
 from vk_scheduler.settings import (CONFIGURATION_FILE_PATH, TMP_DRC_ABSPATH, CAPTCHA_IMG_ABSPATH,
-                                   LINKS_SEP, LINKS_BLOCK_RE, VK_OBJECTS_LINK_RES,
-                                   IMG_LINK_RE, EXTERNAL_VIDEO_LINK_RE,
+                                   LINKS_SEP, LINKS_BLOCK_RE, IMG_LINK_RE, EXTERNAL_VIDEO_LINK_RE,
                                    MINIMAL_INTERVAL_BETWEEN_POST_EDITING_REQUESTS_IN_SECONDS, config)
-from vk_scheduler.utils import get_vk_object_ids, download, show_captcha, clear_drc
+from vk_scheduler.utils import get_vk_object_ids, download, show_captcha, clear_drc, get_vk_object_links
 
 
-class VKScheduler(App):
+class Scheduler(App):
     def __init__(self, app_id: int = 0, group_id: int = 1, user_login: str = '', user_password: str = '',
                  scope: str = '', access_token: str = '', api_version: str = '5.57',
                  last_check_utc_timestamp: int = 0):
@@ -36,30 +34,6 @@ class VKScheduler(App):
         self.log_last_check_utc_timestamp()
         clear_drc(TMP_DRC_ABSPATH)
 
-    @property
-    def unchecked_posts_by_community(self) -> List[VKPost]:
-        params = dict(
-            owner_id=-self.group_id,
-            offset=0,
-            count=50,
-            filter='owner'
-        )
-        response = self.api_session.wall.get(**params)
-        raw_posts = response['items']
-        total_count = response['count']
-        while raw_posts[-1]['date'] > self.last_check_utc_timestamp and params['offset'] < total_count:
-            params['offset'] += params['count']
-            response = self.api_session.wall.get(**params)
-            raw_posts.extend(response['items'])
-        for raw_post in raw_posts:
-            if raw_post['date'] > self.last_check_utc_timestamp:
-                yield VKPost.from_raw(raw_post)
-
-    def log_last_check_utc_timestamp(self):
-        config.set('schedule', 'last_check_utc_timestamp', value=str(self.last_check_utc_timestamp))
-        with open(CONFIGURATION_FILE_PATH, mode='w') as configuration_file:
-            config.write(configuration_file)
-
     def edit_post(self, post: VKPost):
         search_res = re.search(LINKS_BLOCK_RE, post.text)
         if search_res is None:
@@ -67,21 +41,9 @@ class VKScheduler(App):
         links_block = search_res.group().strip()
         links = list(link.strip() for link in links_block.split(LINKS_SEP))
 
-        photos_links = list(
-            link
-            for link in links
-            if re.match(VK_OBJECTS_LINK_RES[VKPhoto], link) is not None
-        )
-        photo_albums_links = list(
-            link
-            for link in links
-            if re.match(VK_OBJECTS_LINK_RES[VKPhotoAlbum], link) is not None
-        )
-        videos_links = list(
-            link
-            for link in links
-            if re.match(VK_OBJECTS_LINK_RES[VKVideo], link) is not None
-        )
+        photos_links = get_vk_object_links(VKPhoto, links)
+        photo_albums_links = get_vk_object_links(VKPhotoAlbum, links)
+        videos_links = get_vk_object_links(VKVideo, links)
         images_links = list(
             link
             for link in links
@@ -94,16 +56,16 @@ class VKScheduler(App):
         )
 
         if photos_links:
-            photos_by_links = self.get_vk_photos_by_links(photos_links)
+            photos_by_links = self.get_photos_by_links(photos_links)
         if photo_albums_links:
-            photo_albums = self.get_vk_photo_albums_by_links(photo_albums_links)
+            photo_albums = self.get_photo_albums_by_links(photo_albums_links)
         if images_links:
-            photos_by_images_links = self.get_vk_photos_by_images_links(images_links)
+            photos_by_images_links = self.get_photos_by_images_links(images_links)
 
         if videos_links:
-            videos_by_links = self.get_vk_videos_by_links(videos_links)
+            videos_by_links = self.get_videos_by_links(videos_links)
         if external_videos_links:
-            videos_by_external_links = self.get_vk_videos_by_external_links(external_videos_links)
+            videos_by_external_links = self.get_videos_by_external_links(external_videos_links)
 
         attachment_id_format = '{key}{vk_id}'
         attachments_ids = list(
@@ -123,8 +85,6 @@ class VKScheduler(App):
                 vk_attachment = photos_by_images_links.pop(0) if photos_by_images_links else None
             elif link in videos_links:
                 vk_attachment = next((video for video in videos_by_links if video.vk_id in link), None)
-                if vk_attachment is not None:
-                    videos_by_links.remove(vk_attachment)
             elif link in external_videos_links:
                 vk_attachment = next((video for video in videos_by_external_links if video.player_link in link), None)
 
@@ -159,13 +119,32 @@ class VKScheduler(App):
                 else:
                     return
 
-    def get_vk_photos_by_links(self, photos_links: List[str]) -> List[VKPhoto]:
+    @property
+    def unchecked_posts_by_community(self) -> List[VKPost]:
+        params = dict(
+            owner_id=-self.group_id,
+            offset=0,
+            count=50,
+            filter='owner'
+        )
+        response = self.api_session.wall.get(**params)
+        raw_posts = response['items']
+        total_count = response['count']
+        while raw_posts[-1]['date'] > self.last_check_utc_timestamp and params['offset'] < total_count:
+            params['offset'] += params['count']
+            response = self.api_session.wall.get(**params)
+            raw_posts.extend(response['items'])
+        for raw_post in raw_posts:
+            if raw_post['date'] > self.last_check_utc_timestamp:
+                yield VKPost.from_raw(raw_post)
+
+    def get_photos_by_links(self, photos_links: List[str]) -> List[VKPhoto]:
         photos_ids = get_vk_object_ids(VKPhoto, photos_links)
         raw_photos = self.api_session.photos.getById(photos=','.join(photos_ids))
         photos = list(VKPhoto.from_raw(raw_photo) for raw_photo in raw_photos)
         return photos
 
-    def get_vk_photo_albums_by_links(self, albums_links: List[str]) -> List[VKVideo]:
+    def get_photo_albums_by_links(self, albums_links: List[str]) -> List[VKVideo]:
         albums_ids = get_vk_object_ids(VKPhotoAlbum, albums_links)
         owners_ids_albums_ids = dict()
         for album_id in albums_ids:
@@ -179,13 +158,13 @@ class VKScheduler(App):
         albums = list(VKPhotoAlbum.from_raw(raw_album) for raw_album in raw_albums)
         return albums
 
-    def get_vk_videos_by_links(self, videos_links: List[str]) -> List[VKVideo]:
+    def get_videos_by_links(self, videos_links: List[str]) -> List[VKVideo]:
         videos_ids = get_vk_object_ids(VKVideo, videos_links)
         raw_videos = self.api_session.video.get(videos=','.join(videos_ids))['items']
         videos = list(VKVideo.from_raw(raw_photo) for raw_photo in raw_videos)
         return videos
 
-    def get_vk_photos_by_images_links(self, images_links: List[str]) -> List[VKPhoto]:
+    def get_photos_by_images_links(self, images_links: List[str]) -> List[VKPhoto]:
         photos = list()
         for i in range(math.ceil(len(images_links) / 7)):
 
@@ -209,7 +188,7 @@ class VKScheduler(App):
             photos += list(VKPhoto.from_raw(raw_photo) for raw_photo in raw_photos)
         return photos
 
-    def get_vk_videos_by_external_links(self, video_links: List[str]) -> List[VKVideo]:
+    def get_videos_by_external_links(self, video_links: List[str]) -> List[VKVideo]:
         video_ids = list(
             '{owner_id}_{video_id}'.format(**response)
             for response in self.videos_by_external_links(video_links)
@@ -224,3 +203,8 @@ class VKScheduler(App):
             with requests.Session() as session:
                 session.post(response['upload_url'])
             yield response
+
+    def log_last_check_utc_timestamp(self):
+        config.set('schedule', 'last_check_utc_timestamp', value=str(self.last_check_utc_timestamp))
+        with open(CONFIGURATION_FILE_PATH, mode='w') as configuration_file:
+            config.write(configuration_file)

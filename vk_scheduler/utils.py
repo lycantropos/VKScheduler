@@ -13,11 +13,26 @@ download = make_delayed(MINIMAL_INTERVAL_BETWEEN_DOWNLOAD_REQUESTS_IN_SECONDS)(d
 
 
 def get_vk_object_ids(cls: type, links: List[str]) -> List[str]:
-    vk_object_ids = list(
+    return list(
         re.match(VK_OBJECTS_LINK_RES[cls], link).group(1)
         for link in links
     )
-    return vk_object_ids
+
+
+def get_vk_object_links(cls: type, links: List[str]) -> List[str]:
+    return list(
+        link
+        for link in links
+        if re.match(VK_OBJECTS_LINK_RES[cls], link) is not None
+    )
+
+
+def filter_by_re(regexp: str, *strings):
+    return list(
+        string
+        for string in strings
+        if re.match(regexp, string) is not None
+    )
 
 
 def show_captcha(path: str):

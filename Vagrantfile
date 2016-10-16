@@ -7,7 +7,9 @@ Vagrant.configure(2) do |config|
     scheduler.vm.guest = :windows
     scheduler.vm.box = "designerror/windows-7"
 
-    scheduler.vm.network "forwarded_port", guest: 32000, host: 32000
+    scheduler.vm.network "forwarded_port", guest: 3200, host: 3200
+
+    scheduler.vm.provision :shell, :path => "provision/bootstrap.cmd"
 
     scheduler.vm.provider :virtualbox do |vb|
       vb.customize ["modifyvm", :id, "--memory", "2048"]
