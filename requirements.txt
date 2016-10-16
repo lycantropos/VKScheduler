@@ -1,0 +1,2 @@
+click
+git+https://github.com/lycantropos/VKApp.git#egg=VKApp
