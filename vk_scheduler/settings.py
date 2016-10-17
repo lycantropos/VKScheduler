@@ -44,9 +44,9 @@ CAPTCHA_IMG_ABSPATH = os.path.join(TMP_DRC_ABSPATH, 'captcha.png')
 MINIMAL_INTERVAL_BETWEEN_DOWNLOAD_REQUESTS_IN_SECONDS = 0.35
 MINIMAL_INTERVAL_BETWEEN_POST_EDITING_REQUESTS_IN_SECONDS = 25
 
-MORE_INFO_BLOCK_RE = r'(\n\nПодробности:.+)?$'
+MORE_INFO_BLOCK_RE = r'(?:\n\nПодробности:.*)?$'
 LINKS_SEP = '\n'
-LINKS_BLOCK_RE = r'\n((https?:\/\/(.+?)(\/.*)){sep})*(https?:\/\/(.+?)(\/.*))'.format(sep=LINKS_SEP) + \
+LINKS_BLOCK_RE = r'\n(?:(?:https?:\/\/(?:.+?)(?:\/.*)){sep})*(?:https?:\/\/(?:.+?)(?:\/.*))'.format(sep=LINKS_SEP) + \
                  r'(?={})'.format(MORE_INFO_BLOCK_RE)
 
 IMG_LINK_RE = r'^https?:\/\/(?:.+?)(?:\/.*\.jpg)$'
