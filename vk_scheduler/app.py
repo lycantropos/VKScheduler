@@ -10,12 +10,12 @@ import vk.exceptions
 from vk_app import App
 from vk_app.attachables import VKPhoto, VKPhotoAlbum, VKVideo
 from vk_app.post import VKPost
-from vk_app.utils import make_delayed
+from vk_app.utils import make_delayed, show_captcha
 
 from vk_scheduler.settings import (CONFIGURATION_FILE_PATH, TMP_DRC_ABSPATH, CAPTCHA_IMG_ABSPATH,
                                    LINKS_SEP, LINKS_BLOCK_RE, IMG_LINK_RE, EXTERNAL_VIDEO_LINK_RE,
                                    MINIMAL_INTERVAL_BETWEEN_POST_EDITING_REQUESTS_IN_SECONDS, config)
-from vk_scheduler.utils import get_vk_object_ids, download, show_captcha, clear_drc, get_vk_object_links
+from vk_scheduler.utils import get_vk_object_ids, download, clear_drc, get_vk_object_links
 
 
 class Scheduler(App):

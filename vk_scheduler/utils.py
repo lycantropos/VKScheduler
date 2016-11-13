@@ -3,7 +3,6 @@ import re
 import shutil
 from typing import List
 
-from PIL import Image
 from vk_app.services.loading import download
 from vk_app.utils import make_delayed
 
@@ -33,14 +32,6 @@ def filter_by_re(regexp: str, *strings):
         for string in strings
         if re.match(regexp, string) is not None
     )
-
-
-def show_captcha(path: str):
-    with Image.open(path) as img:
-        size = img.size
-        size = size[0] * 4, size[1] * 4
-        img = img.resize(size)
-        img.show(path)
 
 
 def clear_drc(path: str):
