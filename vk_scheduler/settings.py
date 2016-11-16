@@ -2,7 +2,7 @@ import configparser
 import os
 import re
 
-from vk_app.models.attachments import VKAttachment
+from vk_app.attachables import VKAttachable
 from vk_app.utils import get_all_subclasses
 
 CONFIGURATION_FILE_NAME = 'configuration.conf'
@@ -59,6 +59,6 @@ VK_ID_RE = r'(-?\d+_\d+)'
 VK_OBJECT_LINK_RE_TEMPLATE = r'^https?:\/\/(?:www\.)?vk\.com\/.*(?:{vk_object_id_re}).*$'
 VK_OBJECTS_LINK_RES = dict(
     (cls, VK_OBJECT_LINK_RE_TEMPLATE.format(vk_object_id_re=cls.key() + VK_ID_RE))
-    for cls in get_all_subclasses(VKAttachment)
+    for cls in get_all_subclasses(VKAttachable)
     if cls.key()
 )
