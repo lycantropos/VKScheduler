@@ -8,14 +8,14 @@ from typing import List
 import requests
 import vk.exceptions
 from vk_app import App
-from vk_app.models.attachments import VKPhoto, VKPhotoAlbum, VKVideo
-from vk_app.models.post import VKPost
-from vk_app.utils import make_delayed
+from vk_app.attachables import VKPhoto, VKPhotoAlbum, VKVideo
+from vk_app.post import VKPost
+from vk_app.utils import make_delayed, show_captcha
 
 from vk_scheduler.settings import (CONFIGURATION_FILE_PATH, TMP_DRC_ABSPATH, CAPTCHA_IMG_ABSPATH,
                                    LINKS_SEP, LINKS_BLOCK_RE, IMG_LINK_RE, EXTERNAL_VIDEO_LINK_RE,
                                    MINIMAL_INTERVAL_BETWEEN_POST_EDITING_REQUESTS_IN_SECONDS, config)
-from vk_scheduler.utils import get_vk_object_ids, download, show_captcha, clear_drc, get_vk_object_links
+from vk_scheduler.utils import get_vk_object_ids, download, clear_drc, get_vk_object_links
 
 
 class Scheduler(App):
@@ -79,22 +79,22 @@ class Scheduler(App):
                 logging.error('Too many attachments, next link would be ignored: {}'.format(link))
                 obscure_links.append(link)
                 continue
-            vk_attachment = None
+            attachment = None
 
             if link in photos_links:
-                vk_attachment = next((photo for photo in photos_by_links if photo.vk_id in link), None)
+                attachment = next((photo for photo in photos_by_links if photo.vk_id in link), None)
             elif link in photo_albums_links:
-                vk_attachment = next((photo_album for photo_album in photo_albums if photo_album.vk_id in link), None)
+                attachment = next((photo_album for photo_album in photo_albums if photo_album.vk_id in link), None)
             elif link in images_links:
-                vk_attachment = photos_by_images_links.pop(0) if photos_by_images_links else None
+                attachment = photos_by_images_links.pop(0) if photos_by_images_links else None
             elif link in videos_links:
-                vk_attachment = next((video for video in videos_by_links if video.vk_id in link), None)
+                attachment = next((video for video in videos_by_links if video.vk_id in link), None)
             elif link in external_videos_links:
-                vk_attachment = next((video for video in videos_by_external_links if video.player_link in link), None)
+                attachment = next((video for video in videos_by_external_links if video.player_link in link), None)
 
-            if vk_attachment is not None:
+            if attachment is not None:
                 attachments_ids.append(
-                    attachment_id_format.format(key=vk_attachment.key(), vk_id=vk_attachment.vk_id)
+                    attachment_id_format.format(key=attachment.key(), vk_id=attachment.vk_id)
                 )
             else:
                 logging.error('Unknown link type: {}'.format(link))
@@ -172,17 +172,17 @@ class Scheduler(App):
         photos = list()
         for i in range(math.ceil(len(images_links) / 7)):
 
-            upload_url = self.get_upload_server_url('photos.getWallUploadServer', group_id=self.group_id)
+            upload_url = self.api_session.photos.getWallUploadServer(group_id=self.group_id)
             images = list()
             for ind, image_link in enumerate(images_links[i * 7: min((i + 1) * 7, len(images_links))]):
                 image_name = image_link.split('/')[-1]
                 save_path = os.path.join(TMP_DRC_ABSPATH, image_name)
-                print(ind, image_link)
+                logging.info(ind, image_link)
                 download(image_link, save_path)
                 with open(save_path, mode='rb') as file:
                     images.append(
                         (
-                            'file{}'.format(ind),
+                            'file',
                             (image_name, file.read())
                         )
                     )
