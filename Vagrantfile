@@ -12,7 +12,7 @@ Vagrant.configure(2) do |config|
     scheduler.vm.provision :shell, :path => "provision/bootstrap.cmd"
 
     scheduler.vm.provider :virtualbox do |vb|
-      vb.customize ["modifyvm", :id, "--memory", "2048"]
+      vb.customize ["modifyvm", :id, "--memory", "4096"]
       vb.customize ["modifyvm", :id, "--cpus", "1"]
       vb.customize ["modifyvm", :id, "--hwvirtex", "on"]
       vb.customize ["modifyvm", :id, "--audio", "none"]

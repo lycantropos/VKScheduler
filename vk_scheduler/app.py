@@ -149,6 +149,12 @@ class Scheduler(App):
         photos = list(VKPhoto.from_raw(raw_photo) for raw_photo in raw_photos)
         return photos
 
+    def get_videos_by_links(self, videos_links: List[str]) -> List[VKVideo]:
+        videos_ids = get_vk_object_ids(VKVideo, videos_links)
+        raw_videos = self.api_session.video.get(videos=','.join(videos_ids))['items']
+        videos = list(VKVideo.from_raw(raw_photo) for raw_photo in raw_videos)
+        return videos
+
     def get_photo_albums_by_links(self, albums_links: List[str]) -> List[VKVideo]:
         albums_ids = get_vk_object_ids(VKPhotoAlbum, albums_links)
         owners_ids_albums_ids = dict()
@@ -162,12 +168,6 @@ class Scheduler(App):
             )
         albums = list(VKPhotoAlbum.from_raw(raw_album) for raw_album in raw_albums)
         return albums
-
-    def get_videos_by_links(self, videos_links: List[str]) -> List[VKVideo]:
-        videos_ids = get_vk_object_ids(VKVideo, videos_links)
-        raw_videos = self.api_session.video.get(videos=','.join(videos_ids))['items']
-        videos = list(VKVideo.from_raw(raw_photo) for raw_photo in raw_videos)
-        return videos
 
     def get_photos_by_images_links(self, images_links: List[str]) -> List[VKPhoto]:
         photos = list()
