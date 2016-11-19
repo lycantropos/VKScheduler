@@ -28,6 +28,8 @@ class Scheduler(App):
 
     def check_posts(self):
         for ind, unchecked_post in enumerate(self.unchecked_posts_by_community):
+            if unchecked_post.object_id != 1458:
+                continue
             logging.info('Processing post: https://vk.com/wall{}'.format(unchecked_post.vk_id))
             self.edit_post(unchecked_post)
             logging.info('Number of posts edited so far {}'.format(ind + 1))
@@ -171,6 +173,7 @@ class Scheduler(App):
 
     def get_photos_by_images_links(self, images_links: List[str]) -> List[VKPhoto]:
         photos = list()
+        method = VKPhoto.identify_save_method('wall')
         for i in range(math.ceil(len(images_links) / 7)):
 
             upload_url = self.get_upload_server_url(VKPhoto.identify_getUploadServer_method('wall'),
@@ -187,10 +190,10 @@ class Scheduler(App):
                             (image_name, file.read())
                         )
                     )
-
-            raw_photos = self.upload_files_on_vk_server('photos.saveWallPhoto', upload_url, images,
-                                                        group_id=self.group_id)
-            photos += list(VKPhoto.from_raw(raw_photo) for raw_photo in raw_photos)
+            for image in images:
+                raw_photo, = self.upload_files_on_vk_server(method=method, upload_url=upload_url,
+                                                            files=[image], group_id=self.group_id)
+                photos.append(VKPhoto.from_raw(raw_photo))
         return photos
 
     def get_videos_by_external_links(self, video_links: List[str]) -> List[VKVideo]:
