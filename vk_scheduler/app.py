@@ -28,8 +28,6 @@ class Scheduler(App):
 
     def check_posts(self):
         for ind, unchecked_post in enumerate(self.unchecked_posts_by_community):
-            if unchecked_post.object_id != 1458:
-                continue
             logging.info('Processing post: https://vk.com/wall{}'.format(unchecked_post.vk_id))
             self.edit_post(unchecked_post)
             logging.info('Number of posts edited so far {}'.format(ind + 1))
