@@ -28,6 +28,7 @@ class Scheduler(App):
 
     def check_posts(self):
         for ind, unchecked_post in enumerate(self.unchecked_posts_by_community):
+            logging.info('Processing post: {}'.format(unchecked_post.vk_id))
             self.edit_post(unchecked_post)
             logging.info('Number of posts edited so far {}'.format(ind + 1))
         self.last_check_utc_timestamp = int(time.time())
