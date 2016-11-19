@@ -173,12 +173,12 @@ class Scheduler(App):
         photos = list()
         for i in range(math.ceil(len(images_links) / 7)):
 
-            upload_url = self.api_session.photos.getWallUploadServer(group_id=self.group_id)
+            upload_url = self.get_upload_server_url(VKPhoto.identify_getUploadServer_method('wall'),
+                                                    group_id=self.group_id)
             images = list()
             for ind, image_link in enumerate(images_links[i * 7: min((i + 1) * 7, len(images_links))]):
                 image_name = image_link.split('/')[-1]
                 save_path = os.path.join(TMP_DRC_ABSPATH, image_name)
-                logging.info(ind, image_link)
                 download(image_link, save_path)
                 with open(save_path, mode='rb') as file:
                     images.append(
