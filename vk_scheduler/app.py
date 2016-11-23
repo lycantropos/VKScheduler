@@ -142,6 +142,7 @@ class Scheduler(App):
             params['offset'] += params['count']
             response = self.api_session.wall.get(**params)
             raw_posts.extend(response['items'])
+        raw_posts.sort(key=lambda post: post.date_time)
         for raw_post in raw_posts:
             if raw_post['date'] > self.last_check_utc_timestamp:
                 yield VKPost.from_raw(raw_post)
