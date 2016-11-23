@@ -56,7 +56,7 @@ EXTERNAL_VIDEO_LINK_RE = r'^https?:\/\/(?:' + '|'.join(
 ) + ')(?:\/.*)$'
 
 VK_ID_RE = r'(-?\d+_\d+)'
-VK_OBJECT_LINK_RE_TEMPLATE = r'^https?:\/\/(?:www\.)?vk\.com\/.*(?:{vk_object_id_re}).*$'
+VK_OBJECT_LINK_RE_TEMPLATE = r'^https?:\/\/(?:www|m\.)?vk\.com\/.*(?:{vk_object_id_re}).*$'
 VK_OBJECTS_LINK_RES = dict(
     (cls, VK_OBJECT_LINK_RE_TEMPLATE.format(vk_object_id_re=cls.key() + VK_ID_RE))
     for cls in get_all_subclasses(VKAttachable)

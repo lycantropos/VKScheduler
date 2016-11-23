@@ -29,7 +29,10 @@ class Scheduler(App):
     def check_posts(self):
         for ind, unchecked_post in enumerate(self.unchecked_posts_by_community):
             logging.info('Processing post: https://vk.com/wall{}'.format(unchecked_post.vk_id))
-            self.edit_post(unchecked_post)
+            try:
+                self.edit_post(unchecked_post)
+            except vk.exceptions.VkAPIError:
+                logging.exception('Some error arose. Post will not be edited. Continue...')
             logging.info('Number of posts edited so far {}'.format(ind + 1))
         self.last_check_utc_timestamp = int(time.time())
         self.log_last_check_utc_timestamp()

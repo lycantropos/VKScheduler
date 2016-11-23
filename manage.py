@@ -37,7 +37,7 @@ def edit_bot():
         )
         time.sleep(wait_sec)
 
-    scheduler.check_posts = make_periodic(CHECKING_INTERVAL_IN_SECONDS)(scheduler.check_posts)
+    # scheduler.check_posts = make_periodic(CHECKING_INTERVAL_IN_SECONDS)(scheduler.check_posts)
     scheduler.check_posts()
 
 
