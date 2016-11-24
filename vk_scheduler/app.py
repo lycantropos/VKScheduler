@@ -1,16 +1,16 @@
 import logging
 import math
 import os
-import re
 import time
 from typing import List
 
 import requests
 import vk.exceptions
 from vk_app import App
+from vk_app.app import captchured
 from vk_app.attachables import VKPhoto, VKPhotoAlbum, VKVideo
 from vk_app.post import VKPost
-from vk_app.utils import make_delayed, show_captcha
+from vk_app.utils import make_delayed
 
 from vk_scheduler.settings import (CONFIGURATION_FILE_PATH, TMP_DRC_ABSPATH, CAPTCHA_IMG_ABSPATH,
                                    LINKS_SEP, LINKS_BLOCK_RE, IMG_LINK_RE, EXTERNAL_VIDEO_LINK_RE,
@@ -39,7 +39,7 @@ class Scheduler(App):
         clear_drc(TMP_DRC_ABSPATH)
 
     def edit_post(self, post: VKPost):
-        search_res = re.search(LINKS_BLOCK_RE, post.text)
+        search_res = LINKS_BLOCK_RE.search(post.text)
         if search_res is None:
             return
         links_block = search_res.group().strip()
@@ -51,12 +51,12 @@ class Scheduler(App):
         images_links = list(
             link
             for link in links
-            if re.match(IMG_LINK_RE, link) is not None
+            if IMG_LINK_RE.match(link) is not None
         )
         external_videos_links = list(
             link
             for link in links
-            if re.match(EXTERNAL_VIDEO_LINK_RE, link) is not None
+            if EXTERNAL_VIDEO_LINK_RE.match(link) is not None
         )
 
         if photos_links:
@@ -109,23 +109,11 @@ class Scheduler(App):
         self.post_edited(post, message, attachments)
 
     @make_delayed(MINIMAL_INTERVAL_BETWEEN_POST_EDITING_REQUESTS_IN_SECONDS)
+    @captchured(CAPTCHA_IMG_ABSPATH)
     def post_edited(self, post: VKPost, message: str, attachments: str, **params):
-        while True:
-            try:
-                self.api_session.wall.edit(owner_id=post.owner_id, post_id=post.object_id,
-                                           message=message, attachments=attachments, **params)
-                return
-            except vk.exceptions.VkAPIError as error:
-                logging.exception('')
-                if error.code == error.CAPTCHA_NEEDED:
-                    download(error.captcha_img, CAPTCHA_IMG_ABSPATH)
-                    show_captcha(CAPTCHA_IMG_ABSPATH)
-                    captcha_key = input('Please enter the captcha key from image:\n')
-                    os.remove(CAPTCHA_IMG_ABSPATH)
-                    params['captcha_sid'] = error.captcha_sid
-                    params['captcha_key'] = captcha_key
-                else:
-                    return
+        self.api_session.wall.edit(owner_id=post.owner_id, post_id=post.object_id,
+                                   message=message, attachments=attachments, **params)
+        return
 
     @property
     def unchecked_posts_by_community(self) -> List[VKPost]:

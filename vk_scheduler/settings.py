@@ -46,19 +46,25 @@ MINIMAL_INTERVAL_BETWEEN_POST_EDITING_REQUESTS_IN_SECONDS = 25
 
 MORE_INFO_BLOCK_RE = r'(?:\n\nПодробности:.*)?$'
 LINKS_SEP = '\n'
-LINKS_BLOCK_RE = r'\n(?:(?:https?:\/\/(?:.+?)(?:\/.*)){sep})*(?:https?:\/\/(?:.+?)(?:\/.*))'.format(sep=LINKS_SEP) + \
-                 r'(?={})'.format(MORE_INFO_BLOCK_RE)
+LINKS_BLOCK_RE = re.compile(
+    r'\n(?:(?:https?:\/\/(?:.+?)(?:\/.*)){sep})*(?:https?:\/\/(?:.+?)(?:\/.*))'.format(sep=LINKS_SEP) + \
+    r'(?={})'.format(MORE_INFO_BLOCK_RE))
 
-IMG_LINK_RE = r'^https?:\/\/(?:.+?)(?:\/.*\.jpg)$'
-EXTERNAL_VIDEO_LINK_RE = r'^https?:\/\/(?:' + '|'.join(
-    '(?:(?:www\.)?{video_service})'.format(video_service=video_service.replace('.', '\.'))
-    for video_service in VIDEO_SERVICES
-) + ')(?:\/.*)$'
+IMG_LINK_RE = re.compile(r'^https?:\/\/(?:.+?)(?:\/.*\.jpg)$')
+EXTERNAL_VIDEO_LINK_RE = re.compile(''.join([
+    r'^https?:\/\/(?:',
+    '|'.join(
+        '(?:(?:www\.)?{video_service})'.format(video_service=video_service.replace('.', '\.'))
+        for video_service in VIDEO_SERVICES
+    ),
+    ')(?:\/.*)$']))
 
-VK_ID_RE = r'(-?\d+_\d+)'
-VK_OBJECT_LINK_RE_TEMPLATE = r'^https?:\/\/(?:www|m\.)?vk\.com\/.*(?:{vk_object_id_re}).*$'
+VK_ID_RE = re.compile(r'(-?\d+_\d+)')
+VK_OBJECT_LINK_RE_PATTERN = r'^https?:\/\/(?:www|m\.)?vk\.com\/.*(?:{vk_object_id_re}).*$'
 VK_OBJECTS_LINK_RES = dict(
-    (cls, VK_OBJECT_LINK_RE_TEMPLATE.format(vk_object_id_re=cls.key() + VK_ID_RE))
+    (cls,
+     re.compile(
+         VK_OBJECT_LINK_RE_PATTERN.format(vk_object_id_re=cls.key() + VK_ID_RE)))
     for cls in get_all_subclasses(VKAttachable)
     if cls.key()
 )
