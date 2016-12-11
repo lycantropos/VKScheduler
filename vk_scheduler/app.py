@@ -8,19 +8,22 @@ import requests
 import vk.exceptions
 from vk_app import App
 from vk_app.app import captchured
-from vk_app.attachables import VKPhoto, VKPhotoAlbum, VKVideo
-from vk_app.post import VKPost
+from vk_app.models import VKPhoto, VKPhotoAlbum, VKVideo, VKPost
 from vk_app.utils import make_delayed
 
-from vk_scheduler.settings import (CONFIGURATION_FILE_PATH, TMP_DRC_ABSPATH, CAPTCHA_IMG_ABSPATH,
-                                   LINKS_SEP, LINKS_BLOCK_RE, IMG_LINK_RE, EXTERNAL_VIDEO_LINK_RE,
-                                   MINIMAL_INTERVAL_BETWEEN_POST_EDITING_REQUESTS_IN_SECONDS, config)
+from vk_scheduler.settings import (CONFIGURATION_FILE_PATH, TMP_DRC_ABSPATH,
+                                   CAPTCHA_IMG_ABSPATH, LINKS_SEP, LINKS_BLOCK_RE,
+                                   IMG_LINK_RE, EXTERNAL_VIDEO_LINK_RE,
+                                   MINIMAL_INTERVAL_BETWEEN_POST_EDITING_REQUESTS_IN_SECONDS,
+                                   config)
 from vk_scheduler.utils import get_vk_object_ids, download, clear_drc, get_vk_object_links
 
 
 class Scheduler(App):
-    def __init__(self, app_id: int = 0, group_id: int = 1, user_login: str = '', user_password: str = '',
-                 scope: str = '', access_token: str = '', api_version: str = '5.57',
+    def __init__(self, app_id: int = 0, group_id: int = 1,
+                 user_login: str = '', user_password: str = '',
+                 scope: str = '', access_token: str = '',
+                 api_version: str = '5.57',
                  last_check_utc_timestamp: int = 0):
         super().__init__(app_id, user_login, user_password, scope, access_token, api_version)
         self.group_id = group_id
@@ -32,7 +35,8 @@ class Scheduler(App):
             try:
                 self.edit_post(unchecked_post)
             except vk.exceptions.VkAPIError:
-                logging.exception('Some error arose. Post will not be edited. Continue...')
+                logging.exception('Some error arose. Post will not be edited. '
+                                  'Continue...')
             logging.info('Number of posts edited so far {}'.format(ind + 1))
         self.last_check_utc_timestamp = int(time.time())
         self.log_last_check_utc_timestamp()
@@ -80,21 +84,34 @@ class Scheduler(App):
         obscure_links = list()
         for link in links:
             if len(attachments_ids) >= 10:
-                logging.error('Too many attachments, next link would be ignored: {}'.format(link))
+                logging.error('Too many attachments, '
+                              'next link would be ignored: {}'.format(link))
                 obscure_links.append(link)
                 continue
             attachment = None
 
             if link in photos_links:
-                attachment = next((photo for photo in photos_by_links if photo.vk_id in link), None)
+                attachment = next((photo
+                                   for photo in photos_by_links
+                                   if photo.vk_id in link),
+                                  None)
             elif link in photo_albums_links:
-                attachment = next((photo_album for photo_album in photo_albums if photo_album.vk_id in link), None)
+                attachment = next((photo_album
+                                   for photo_album in photo_albums
+                                   if photo_album.vk_id in link),
+                                  None)
             elif link in images_links:
                 attachment = photos_by_images_links.pop(0) if photos_by_images_links else None
             elif link in videos_links:
-                attachment = next((video for video in videos_by_links if video.vk_id in link), None)
+                attachment = next((video
+                                   for video in videos_by_links
+                                   if video.vk_id in link),
+                                  None)
             elif link in external_videos_links:
-                attachment = next((video for video in videos_by_external_links if video.player_link in link), None)
+                attachment = next((video
+                                   for video in videos_by_external_links
+                                   if video.player_link in link),
+                                  None)
 
             if attachment is not None:
                 attachments_ids.append(
@@ -156,20 +173,25 @@ class Scheduler(App):
         raw_albums = list()
         for owner_id, albums_ids in owners_ids_albums_ids.items():
             raw_albums.extend(
-                self.api_session.photos.getAlbums(owner_id=owner_id, album_ids=','.join(albums_ids))['items']
+                self.api_session.photos.getAlbums(owner_id=owner_id,
+                                                  album_ids=','.join(albums_ids))['items']
             )
         albums = list(VKPhotoAlbum.from_raw(raw_album) for raw_album in raw_albums)
         return albums
 
     def get_photos_by_images_links(self, images_links: List[str]) -> List[VKPhoto]:
         photos = list()
-        method = VKPhoto.identify_save_method('wall')
-        for i in range(math.ceil(len(images_links) / 7)):
-
-            upload_url = self.get_upload_server_url(VKPhoto.identify_getUploadServer_method('wall'),
-                                                    group_id=self.group_id)
+        save_method = VKPhoto.save_method('wall')
+        upload_server_method = VKPhoto.getUploadServer_method('wall')
+        # VK can process only seven photos at once,
+        # so splitting images links in chunks
+        chunks_num = math.ceil(len(images_links) / 7)
+        for chunk_num in range(chunks_num):
             images = list()
-            for ind, image_link in enumerate(images_links[i * 7: min((i + 1) * 7, len(images_links))]):
+            slice_start = chunk_num * 7
+            slice_end = min((chunk_num + 1) * 7, len(images_links))
+            images_links_chunk = images_links[slice_start: slice_end]
+            for image_link in images_links_chunk:
                 image_name = image_link.split('/')[-1]
                 save_path = os.path.join(TMP_DRC_ABSPATH, image_name)
                 download(image_link, save_path)
@@ -180,10 +202,16 @@ class Scheduler(App):
                             (image_name, file.read())
                         )
                     )
+
+            upload_url = self.get_upload_server_url(upload_server_method,
+                                                    group_id=self.group_id)
             for image in images:
-                raw_photo, = self.upload_files_on_vk_server(method=method, upload_url=upload_url,
-                                                            files=[image], group_id=self.group_id)
+                raw_photo, = self.upload_files_on_vk_server(method=save_method,
+                                                            upload_url=upload_url,
+                                                            files=[image],
+                                                            group_id=self.group_id)
                 photos.append(VKPhoto.from_raw(raw_photo))
+
         return photos
 
     def get_videos_by_external_links(self, video_links: List[str]) -> List[VKVideo]:
@@ -197,12 +225,14 @@ class Scheduler(App):
 
     def videos_by_external_links(self, links: List[str]):
         for link in links:
-            response = self.api_session.video.save(link=link, group_id=self.group_id)
+            response = self.api_session.video.save(link=link,
+                                                   group_id=self.group_id)
             with requests.Session() as session:
                 session.post(response['upload_url'])
             yield response
 
     def log_last_check_utc_timestamp(self):
-        config.set('schedule', 'last_check_utc_timestamp', value=str(self.last_check_utc_timestamp))
+        config.set('schedule', 'last_check_utc_timestamp',
+                   value=str(self.last_check_utc_timestamp))
         with open(CONFIGURATION_FILE_PATH, mode='w') as configuration_file:
             config.write(configuration_file)
